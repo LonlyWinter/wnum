@@ -1,0 +1,10 @@
+/target
+/data
+Cargo.lock
+flamegraph*
+perf*
+*.log
+*.tensor
+*.so
+*.o
+*.json
