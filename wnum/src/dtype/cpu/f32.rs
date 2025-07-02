@@ -606,5 +606,27 @@ impl Data for F32Test {
         Self::from_vec(dst)
 
     }
+
+    fn narrow(&self, dims: &[usize], dim: usize, start: usize, n: usize) -> WResult<Self> {
+                
+        let n0 = dims.iter().copied().take(dim).reduce(| a, b | a * b).unwrap_or(1);
+        let n1 = dims.iter().copied().skip(dim+1).reduce(| a, b | a * b).unwrap_or(1);
+        let nn = dims[dim];
+
+        let mut data = Vec::with_capacity(n0 * n * n1);
+        for n0_temp in 0..n0 {
+            let i_start = n0_temp * n1 * nn;
+            for n_temp in start..(start+n) {
+                let j_start = n_temp * n1 + i_start;
+                for n1_temp in 0..n1 {
+                    let index = n1_temp + j_start;
+                    let v = self.0[index];
+                    data.push(v);
+                }
+            }
+        }
+
+        Self::from_vec(data)
+    }
 }
 

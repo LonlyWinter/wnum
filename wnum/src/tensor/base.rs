@@ -203,6 +203,15 @@ impl<T: Data> WTensor<T> {
         Ok(d)
     }
 
+    pub fn dim(&self, dim: u8) -> WResult<usize> {
+        let dims = self.read_data()?.dims.to_vec();
+        let dim_usize = dim as usize;
+        if dim_usize >= dims.len() {
+            return Err(WError::DimNotFound(dim));
+        }
+        Ok(dims[dim_usize])
+    }
+
     pub fn id(&self) -> u16 {
         self.0.id
     }

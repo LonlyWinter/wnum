@@ -1,9 +1,9 @@
 
 use std::fs::remove_file;
 
-use crate::{array::dim::WArrDims, dtype::cuda::F32, tensor::{module::{linear::Linear, loss::mse, optim::{Optim, SGD}}, varmap::Varmap}};
+use wnum::{array::dim::WArrDims, dtype::cuda::F32, tensor::{module::{linear::Linear, loss::mse, optim::{Optim, SGD}}, varmap::Varmap}};
 #[allow(unused)]
-use crate::{array::{arr::WArr, error::WResult}, tensor::{base::WTensor, log::log_init}};
+use wnum::{array::{arr::WArr, error::WResult}, tensor::{base::WTensor, log::log_init}};
 
 
 #[test]

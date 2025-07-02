@@ -1,11 +1,11 @@
 [package]
 name = "mnist"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 
 
 [dependencies]
-wnum = { path = "../../wnum" }
+wnum = { path = "../../wnum", default-features = false, features = ["logger", "random", "tensor", "module", "dataset"] }
 log = "0.4.26"
 kdam = "0.6.2"
 candle-core = "0.9.1"

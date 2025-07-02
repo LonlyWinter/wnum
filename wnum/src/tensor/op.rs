@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::array::{arr::WArr, data::Data, error::WResult};
+use crate::array::{arr::WArr, data::Data, error::{WError, WResult}};
 
 use super::base::{Grad, WTensor};
 
@@ -28,6 +28,9 @@ pub enum Op<T: Data> {
     UnSqueeze(WTensor<T>, u8),
     Mean(WTensor<T>, u8),
     Gather(WTensor<T>, WTensor<T>, u8),
+    Sqr(WTensor<T>),
+    Sqrt(WTensor<T>),
+    Cat(Vec<WTensor<T>>, u8),
 }
 
 
@@ -67,7 +70,7 @@ impl<T: Data> WTensor<T> {
     }
 
     pub fn sum_keepdim(&self, dim: u8) -> WResult<Self> {
-        let n = self.dims()?.to_vec()[dim as usize];
+        let n = self.dim(dim)?;
         self.sum(dim)?.broadcast(dim, n)
     }
 
@@ -77,7 +80,7 @@ impl<T: Data> WTensor<T> {
     }
 
     pub fn max_keepdim(&self, dim: u8) -> WResult<Self> {
-        let n = self.dims()?.to_vec()[dim as usize];
+        let n = self.dim(dim)?;
         self.max(dim)?.broadcast(dim, n)
     }
 
@@ -108,7 +111,13 @@ impl<T: Data> WTensor<T> {
     }
 
     pub fn sqr(&self) -> WResult<Self> {
-        self.mul(self)
+        let op = Op::Sqr(self.clone());
+        Self::from_op(op)
+    }
+
+    pub fn sqrt(&self) -> WResult<Self> {
+        let op = Op::Sqrt(self.clone());
+        Self::from_op(op)
     }
 
     pub fn broadcast(&self, dim: u8, n: usize) -> WResult<Self> {
@@ -153,12 +162,21 @@ impl<T: Data> WTensor<T> {
         let op = Op::Gather(self.clone(), indexes.clone(), dim);
         Self::from_op(op)
     }
+
+    pub fn cat(datas: Vec<&Self>, dim: u8) -> WResult<Self> {
+        if datas.len() < 2 {
+            return Err(WError::DimNumError(format!("Need >= 2 dims")));
+        }
+        let datas = datas.into_iter().map(| v | v.to_owned()).collect::<Vec<_>>();
+        let op = Op::Cat(datas, dim);
+        Self::from_op(op)
+    }
 }
 
 
 
 macro_rules! wtensor_basic_ops {
-    ($ty:ident, $method:ident, $method_broadcast:ident) => {
+    ($ty:ident, $method:ident, $method_broadcast:ident, $method_broadcast2:ident) => {
         impl<T: Data> WTensor<T> {
             pub fn $method(&self, rhs: &Self) -> WResult<Self> {
                 let op = Op::$ty(self.clone(), rhs.clone());
@@ -169,14 +187,34 @@ macro_rules! wtensor_basic_ops {
                 let data = self.like(n)?;
                 self.$method(&data)
             }
+
+            pub fn $method_broadcast2(&self, rhs: &Self) -> WResult<Self> {
+                let mut dims = self.dims()?.to_vec();
+                let mut dims_w = rhs.dims()?.to_vec();
+                let mut w = rhs.clone();
+                if dims.len() > 0 {
+                    dims_w.reverse();
+                    for dim in dims_w {
+                        let d = dims.pop().unwrap();
+                        if d != dim {
+                            return Err(WError::DimMisMatch(d, dim));
+                        }
+                    }
+                    dims.reverse();
+                    for dim in dims.iter() {
+                        w = w.unsqueeze(0)?.broadcast(0, *dim)?;
+                    }
+                }
+                self.$method(&w)
+            }
         }
     };
 }
 
-wtensor_basic_ops!(Add, add, broadcast_add);
-wtensor_basic_ops!(Sub, sub, broadcast_sub);
-wtensor_basic_ops!(Mul, mul, broadcast_mul);
-wtensor_basic_ops!(Div, div, broadcast_div);
+wtensor_basic_ops!(Add, add, broadcast_add, add_broadcast);
+wtensor_basic_ops!(Sub, sub, broadcast_sub, sub_broadcast);
+wtensor_basic_ops!(Mul, mul, broadcast_mul, mul_broadcast);
+wtensor_basic_ops!(Div, div, broadcast_div, div_broadcast);
 
 
 
@@ -202,6 +240,9 @@ impl<T: Data> Op<T> {
             Self::UnSqueeze(_, _) => "unsqueeze",
             Self::Mean(_, _) => "mean",
             Self::Gather(_, _, _) => "gather",
+            Self::Sqr(_) => "sqr",
+            Self::Sqrt(_) => "sqrt",
+            Self::Cat(_, _) => "cat",
         }
     }
 
@@ -225,6 +266,9 @@ impl<T: Data> Op<T> {
             Self::UnSqueeze(a, _) => a.id(),
             Self::Mean(a, _) => a.id(),
             Self::Gather(a, b, _) => a.id().max(b.id()),
+            Self::Sqr(a) => a.id(),
+            Self::Sqrt(a) => a.id(),
+            Self::Cat(a, _) => a.iter().map(| v | v.id()).max().unwrap(),
         }
     }
 
@@ -248,6 +292,9 @@ impl<T: Data> Op<T> {
             Self::UnSqueeze(a, _) => vec![a.clone(), ],
             Self::Mean(a, _) => vec![a.clone(), ],
             Self::Gather(a, b, _) => vec![b.clone(), a.clone()],
+            Self::Sqr(a) => vec![a.clone(), ],
+            Self::Sqrt(a) => vec![a.clone(), ],
+            Self::Cat(a, _) => a.to_owned(),
         }
     }
 
@@ -362,7 +409,27 @@ impl<T: Data> Op<T> {
                 let data1data = data1.read_data()?;
                 let data2data = data2.read_data()?;
                 data1data.gather(&data2data, *dim)?
-            }
+            },
+            Self::Sqr(data1) => {
+                let data = data1.read_data()?;
+                data.mul(&data)?
+            },
+            Self::Sqrt(data1) => {
+                data1.read_data()?.sqrt()?
+            },
+            Self::Cat(datas, dim) => {
+                let data0 = datas[0].read_data()?;
+                let data1 = datas[1].read_data()?;
+                let data = data0.concat(&data1, *dim)?;
+                datas.iter()
+                    .skip(2)
+                    .map(| v | v.read_data())
+                    .collect::<WResult<Vec<_>>>()?
+                    .into_iter()
+                    .fold(data, | a, b | {
+                        a.concat(&b, *dim).unwrap()
+                    })
+            },
         };
         Ok(res)
     }
@@ -530,7 +597,7 @@ impl<T: Data> Op<T> {
                 )?;
             },
             Self::Sum(data1, dim) => {
-                let n = data1.dims()?.to_vec()[*dim as usize];
+                let n = data1.dim(*dim)?;
                 let grad1 = node_grad.broadcast(*dim, n)?;
                 #[cfg(feature = "logger")]
                 log::debug!("sum backward {} {:?}", data1.id(), grad1.dims);
@@ -542,7 +609,7 @@ impl<T: Data> Op<T> {
             Self::Max(data1, dim) => {
                 #[cfg(feature = "logger")]
                 log::debug!("max backward start");
-                let n = data1.dims()?.to_vec()[*dim as usize];
+                let n = data1.dim(*dim)?;
                 let data1data = data1.read_data()?;
                 let node_data_now = node_data.broadcast(*dim, n)?;
                 let v = data1data.eq_item(&node_data_now)?;
@@ -606,7 +673,7 @@ impl<T: Data> Op<T> {
             Self::Mean(data1, dim) => {
                 #[cfg(feature = "logger")]
                 log::debug!("mean backward start");
-                let n0 = data1.dims()?.to_vec()[*dim as usize];
+                let n0 = data1.dim(*dim)?;
                 let n1 = T::usize_to_basic(n0)?;
                 let grad1 = node_grad.broadcast_div(&n1)?;
                 let grad1 = grad1.broadcast(*dim, n0)?;
@@ -628,7 +695,40 @@ impl<T: Data> Op<T> {
                     data1.id(),
                     grad
                 )?;
-            }
+            },
+            Self::Sqr(data1) => {
+                #[cfg(feature = "logger")]
+                log::debug!("sqr backward start");
+                let grad = data1.read_data()?
+                    .mul(&node_grad)?
+                    .broadcast_mul(&T::f64_to_basic(2.0)?)?;
+                grads.insert(
+                    data1.id(),
+                    grad
+                )?;
+            },
+            Self::Sqrt(data1) => {
+                #[cfg(feature = "logger")]
+                log::debug!("sqrt backward start");
+                let grad = node_grad.div(node_data)?
+                    .broadcast_mul(&T::f64_to_basic(0.5)?)?;
+                grads.insert(
+                    data1.id(),
+                    grad
+                )?;
+            },
+            Self::Cat(datas, dim) => {
+                let mut start_idx = 0;
+                for data_single in datas {
+                    let len = data_single.dim(*dim)?;
+                    let grad = node_grad.narrow(*dim, start_idx, len)?;
+                    grads.insert(
+                        data_single.id(),
+                        grad
+                    )?;
+                    start_idx += len;
+                }
+            },
         }
         Ok(())
     }
@@ -640,7 +740,7 @@ impl<T: Data> Op<T> {
 //         impl WTensor<$ty> {
 //             pub fn sum_exp(&self, dim: u8, broadcast: bool) -> WResult<Self> {
 //                 let data = self.read_data()?;
-//                 let n = data.dims.to_vec()[dim as usize];
+//                 let n = data.dim(dim)?;
 //                 let data_res = data.sum_exp(dim)?;
 //                 log::debug!("softmax res: {}", data_res);
 //                 let data_res = if broadcast {

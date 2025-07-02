@@ -170,5 +170,6 @@ where
     // select
     fn gather(&self, indexes: &Self, dims_self: &[usize], dims_ids: &[usize], dim: usize) -> WResult<Self>;
     fn scatter(&self, indexes: &Self, src: &Self, dims_self: &[usize], dims_ids: &[usize], dim: usize) -> WResult<Self>;
+    fn narrow(&self, dims: &[usize], dim: usize, start: usize, n: usize) -> WResult<Self>;
 }
 

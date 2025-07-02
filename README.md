@@ -1,14 +1,21 @@
 # wnum
 
-1. A deep-learning framework with Rust
+1. A deep-learning and numerical-computing framework with Rust
 
-2. Inspired by [Candle](https://github.com/huggingface/candle)
+2. Inspired by [Candle](https://github.com/huggingface/candle) [OpenCV](https://github.com/opencv/opencv)
 
 3. Developing
 
-## ToDo
+## Modules
 
-- malloc cache
+- array
+- tensor
+- dataframe
+- img
+- video
+- features2d
+- objdetect
+- ml
 
 ## License
 

@@ -849,3 +849,61 @@ grad_sub_9()
 
 
 # %%
+def test_tensor_grad_sqrt():
+    import torch
+    a = torch.from_numpy(np.arange(1, 7, dtype=np.float32).reshape((2, 3)))
+    a.requires_grad = True
+    b = a.sqrt()
+    loss = b.sum()
+    loss.backward()
+    # loss = ff.sum()
+    # loss.backward()
+    print(a, b, loss, sep="\n")
+    print_arr(a)
+    print_arr(b, dig=4)
+    # print_arr(ff, dig=4)
+    print(loss)
+    print_arr(a.grad, dig=4)
+
+test_tensor_grad_sqrt()
+
+# %%
+def test_narrow_1():
+    import torch
+    a = torch.from_numpy(np.arange(1, 61, dtype=np.float32).reshape((3, 5, 4)))
+    b = a.narrow(0, 1, 2)
+    c = a.narrow(1, 2, 3)
+    d = a.narrow(2, 0, 3)
+    print_arr(a)
+    print_arr(b)
+    print_arr(c)
+    print_arr(d)
+test_narrow_1()
+# %%
+def test_grad_concat_1():
+    import torch
+    a = torch.from_numpy(np.arange(0, 6, dtype=np.float32).reshape((2, 3)))
+    a.requires_grad = True
+    b = a.exp()
+    c = a.div(b)
+    d = torch.concat([a, c], dim=1)
+    loss = d.sum()
+    d.register_hook(lambda d: print_arr(d))
+    c.register_hook(lambda d: print_arr(d))
+    b.register_hook(lambda d: print_arr(d, dig=4))
+    loss.backward()
+    # loss = ff.sum()
+    # loss.backward()
+    print(a, b, c, loss, sep="\n")
+    print_arr(a)
+    print_arr(b, dig=4)
+    print_arr(c, dig=4)
+    print_arr(d, dig=4)
+    # print_arr(ff, dig=4)
+    print(loss)
+    print_arr(a.grad, dig=4)
+
+test_grad_concat_1()
+
+
+# %%

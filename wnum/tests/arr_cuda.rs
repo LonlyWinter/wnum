@@ -1,5 +1,5 @@
 
-use crate::{array::{arr::WArr, data::Data, error::{WError, WResult}}, dtype::cuda::F32};
+use wnum::{array::{arr::WArr, data::Data, error::{WError, WResult}}, dtype::cuda::F32};
 
 
 

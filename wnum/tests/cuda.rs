@@ -1,4 +1,4 @@
-use crate::{array::{data::Data, error::WResult}, dtype::cuda::f32::F32};
+use wnum::{array::{data::Data, error::WResult}, dtype::cuda::f32::F32};
 
 
 #[test]

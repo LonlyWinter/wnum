@@ -3,6 +3,7 @@
 use rand::{distr::{Distribution, StandardUniform}, rng};
 #[cfg(feature = "random")]
 use rand_distr::Normal;
+#[cfg(feature = "random")]
 use rand_distr::Uniform;
 
 use super::{arr::WArr, data::Data, dim::WArrDims, error::WResult};

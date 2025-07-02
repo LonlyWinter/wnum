@@ -3,6 +3,8 @@ mod arr;
 
 mod tensor;
 
+mod module;
+
 mod matmul;
 
 mod cuda;

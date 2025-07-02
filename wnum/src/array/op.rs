@@ -499,4 +499,20 @@ impl<T: Data> WArr<T> {
         let dims = self.dims.clone();
         Ok(Self::new(data, dims))
     }
+
+    pub fn narrow(&self, dim: u8, start: usize, len: usize) -> WResult<Self> {
+        if dim >= self.dims.dims_num() {
+            return Err(WError::DimNotFound(dim));
+        }
+
+        let dim_usize = dim as usize;
+        let mut dims = self.dims.to_vec();
+        if dims[dim_usize] < (start + len) {
+            return Err(WError::DimNumError(format!("Dim {dim} too small")))
+        }
+        let data = self.data.narrow(&dims, dim_usize, start, len)?;
+        dims[dim_usize] = len;
+        let dims = WArrDims::from(dims.as_slice());
+        Ok(Self::new(data, dims))
+    }
 }

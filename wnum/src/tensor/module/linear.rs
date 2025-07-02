@@ -48,7 +48,7 @@ impl<T: Data> Linear<T> {
 
     pub fn forward(&self, data: &WTensor<T>) -> WResult<WTensor<T>> {
         log::debug!("linear x: {:?}, linear w: {:?}", data, self.w);
-        let batch_num = data.dims()?.to_vec()[0];
+        let batch_num = data.dim(0)?;
         let y = data.matmul(&self.w)?;
         log::debug!("linear w*x: {} {:?}", y.id(), y);
         let y = if let Some(b) = &self.b {

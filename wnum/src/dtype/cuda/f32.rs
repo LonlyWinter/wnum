@@ -450,6 +450,10 @@ impl Data for F32 {
     fn scatter(&self, _indexes: &Self, _src: &Self, _dims_self: &[usize], _dims_ids: &[usize], _dim: usize) -> WResult<Self> {
         todo!()
     }
+
+    fn narrow(&self, _dims: &[usize], _dim: usize, _start: usize, _n: usize) -> WResult<Self> {
+        todo!()
+    }
 }
 
 

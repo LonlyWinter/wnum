@@ -12,7 +12,7 @@ pub fn nll<T: Data>(a: &WTensor<T>, b: &WTensor<T>) -> WResult<WTensor<T>> {
         return Err(WError::DimNumError("B Need 1 dim".to_string()));
     }
     let b_n = b_dim.dims_len();
-    if !a.dims()?.to_vec()[0].eq(&b_n) {
+    if !a.dim(0)?.eq(&b_n) {
         return Err(WError::DimNumError("A dim0".to_string()));
     }
     let b_n = T::f64_to_basic(-1f64 / b_n as f64)?;
